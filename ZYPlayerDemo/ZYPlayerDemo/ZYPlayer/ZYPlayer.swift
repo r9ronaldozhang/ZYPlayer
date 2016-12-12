@@ -9,7 +9,6 @@
 import UIKit
 import AVFoundation
 import MediaPlayer
-
 //播放器的几种状态
 enum ZYPlayerState : Int {
     case buffering     = 1
@@ -25,8 +24,26 @@ enum ZYPlayerLayerFillMode : Int {
     case    resize           = 3
 }
 
-class ZYPlayer: UIViewController {
+@objc protocol ZYPlayerDelegate {
+    
+    @objc optional func playerPrepareToPlay(player : ZYPlayer)
+    
+    @objc optional func playerDidEndPlaying(player : ZYPlayer)
+    
+    @objc optional func playerDidPaused(player : ZYPlayer)
+    
+    @objc optional func playerDidBeginPlaying(player : ZYPlayer)
+    
+    @objc optional func playerDidPlayFeild(player : ZYPlayer)
+    
+    @objc optional func playerDidReleased(player : ZYPlayer)
+    
+}
 
+
+
+class ZYPlayer: UIViewController {
+    
     /** open property */
     
     /** 播放器的状态 */
@@ -41,6 +58,8 @@ class ZYPlayer: UIViewController {
     open var progress                       : CGFloat = 0
     /** 视频当前播放的时间点 */
     open var current                        : CGFloat = 0
+    /** 代理 */
+    open var delegate                       : ZYPlayerDelegate?
     
     /** xib property */
     
@@ -91,7 +110,7 @@ class ZYPlayer: UIViewController {
     fileprivate var isInteraction           = false
     /** 上一次旋转时的屏幕方向 */
     fileprivate var lastOrientation         : UIDeviceOrientation?
-
+    
     fileprivate var volumnSlider            : UISlider?
     
     fileprivate lazy var keyWindow          : UIWindow = {
@@ -99,7 +118,7 @@ class ZYPlayer: UIViewController {
         keyWindow?.backgroundColor = UIColor.red
         return keyWindow!
     }()
-
+    
     convenience init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?, onView orgView : UIView , orgFrame : CGRect, url : String) {
         self.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
         self.orgView = orgView
@@ -111,6 +130,7 @@ class ZYPlayer: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         self.view.frame = orgFrame!
+        self.playerView.frame = orgFrame!
         // UI初始化
         initUI()
     }
@@ -120,7 +140,7 @@ class ZYPlayer: UIViewController {
         releasePlayer()
     }
     
-    // MARK: - 获取系统音量slider 
+    // MARK: - 获取系统音量slider
     fileprivate func getSystemVolumnSlider() -> UISlider? {
         if volumnSlider == nil {
             let mpVolumnView = MPVolumeView()
@@ -163,7 +183,6 @@ extension ZYPlayer  {
         playerItem = AVPlayerItem(url: URL(string: url)!)
         player = AVPlayer(playerItem: playerItem)
         playerLayer = AVPlayerLayer(player: player)
-        playerLayer?.frame = playerView.bounds
         playerView.layer.insertSublayer(playerLayer!, at: 0)
         switch fillMode {
         case .resizeAspect:
@@ -173,6 +192,7 @@ extension ZYPlayer  {
         case .resize:
             playerLayer?.videoGravity = AVLayerVideoGravityResize
         }
+        playerLayer?.frame = playerView.bounds
         // 添加KVO监听  必须要在创建了item以后才能监听KVO
         addKVOObserver()
         // 增加tap手势，控制controlBar显示与隐藏
@@ -299,7 +319,7 @@ extension ZYPlayer {
             self.controlBar.alpha = 1.0
         }
     }
-
+    
 }
 
 // MARK: - Timer 添加 和 处理
@@ -363,8 +383,14 @@ extension ZYPlayer {
         if keyPath == "status" {
             if playerItem.status == AVPlayerItemStatus.readyToPlay {
                 monitoringPlayback()    // 准备播放
+                if delegate != nil {
+                    delegate?.playerPrepareToPlay!(player: self)
+                }
             } else {                    // 初始化播放器失败了
                 state = .stopped
+                if delegate != nil {
+                    delegate?.playerDidPlayFeild!(player: self)
+                }
             }
         } else if keyPath == "loadedTimeRanges" {                                           //监听播放器的下载进度
             calculateBufferedProgress(playerItem)
@@ -451,7 +477,7 @@ extension ZYPlayer {
 // MARK: - 播放 暂停 定位播放 处理
 extension ZYPlayer {
     /** 开始播放 */
-    fileprivate func startToPlay() {
+    open func startToPlay() {
         if player == nil {
             indicator.startAnimating()
             indicator.isHidden = false
@@ -462,10 +488,13 @@ extension ZYPlayer {
         playPauseBtn.isSelected = true
         state = .playing
         player?.play()
+        if delegate != nil {
+            delegate?.playerDidBeginPlaying!(player: self)
+        }
     }
-
+    
     /** 暂停播放 */
-    fileprivate func pauseToPlay() {
+    open func pauseToPlay() {
         durationTimer?.invalidate()
         autoTimer?.invalidate()
         indicator.stopAnimating()
@@ -473,6 +502,9 @@ extension ZYPlayer {
         state = .stopped
         playPauseBtn.isSelected = false
         player?.pause()
+        if delegate != nil {
+            delegate?.playerDidPaused!(player: self)
+        }
     }
     
     /** 匹配播放的位置 */
@@ -529,7 +561,7 @@ extension ZYPlayer {
         }
         fullBtn.isSelected = false
         lastOrientation = .portrait
-        UIApplication.shared.isStatusBarHidden = false 
+        UIApplication.shared.isStatusBarHidden = false
     }
 }
 
@@ -550,6 +582,9 @@ extension ZYPlayer {
         autoTimer = nil
         // UI 恢复到初始的状态
         playPauseBtn.isSelected = false
+        if delegate != nil {
+            delegate?.playerDidReleased!(player: self)
+        }
     }
 }
 

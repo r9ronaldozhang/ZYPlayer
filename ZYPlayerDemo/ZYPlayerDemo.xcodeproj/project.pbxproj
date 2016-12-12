@@ -405,6 +405,7 @@
 				79F897611DDE058900CD1643 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
