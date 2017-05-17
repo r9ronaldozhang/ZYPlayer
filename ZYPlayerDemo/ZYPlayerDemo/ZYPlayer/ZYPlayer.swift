@@ -429,7 +429,7 @@ extension ZYPlayer {
     
     /** 进入后台通知 */
     @objc fileprivate func appDidEnterBackground() {
-        state = .stopped
+        state = .pause
         pauseToPlay()
     }
     
@@ -479,6 +479,7 @@ extension ZYPlayer {
     /** 开始播放 */
     open func startToPlay() {
         if player == nil {
+            centerBtn.isHidden = true
             indicator.startAnimating()
             indicator.isHidden = false
             initPlayer(url!)
@@ -529,7 +530,7 @@ extension ZYPlayer {
         keyWindow.addSubview(self.view)
         // UIView动画进行旋转
         UIView.animate(withDuration: 0.4, animations: {
-            self.view.transform = CGAffineTransform(rotationAngle: CGFloat(M_PI_2))
+            self.view.transform = CGAffineTransform(rotationAngle: .pi/2)
             self.view.frame = self.keyWindow.bounds
             self.playerLayer?.frame = self.view.bounds
         })
@@ -542,7 +543,7 @@ extension ZYPlayer {
         if lastOrientation == .landscapeRight { return }
         keyWindow.addSubview(self.view)
         UIView.animate(withDuration: 0.4) {
-            self.view.transform = CGAffineTransform(rotationAngle: CGFloat(-M_PI_2))
+            self.view.transform = CGAffineTransform(rotationAngle: .pi/2)
             self.view.frame = self.keyWindow.bounds
             self.playerLayer?.frame = self.view.bounds
         }
@@ -575,6 +576,7 @@ extension ZYPlayer {
         playerItem?.removeObserver(self, forKeyPath: "playbackBufferEmpty")
         playerItem?.removeObserver(self, forKeyPath: "playbackLikelyToKeepUp")
         player?.replaceCurrentItem(with: nil)
+        player = nil
         playerItem = nil
         durationTimer?.invalidate()
         durationTimer = nil
